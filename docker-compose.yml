@@ -1,0 +1,40 @@
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: goworkforce
+      MYSQL_USER: goworkforce_user
+      MYSQL_PASSWORD: goworkforce_password
+    ports:
+      - "3306:3306"
+    networks:
+      - goworkforce-network
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  api:
+    build: .
+    container_name: api
+    ports:
+      - "8080:8080"
+    environment:
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: goworkforce_user
+      DB_PASSWORD: goworkforce_password
+      DB_NAME: goworkforce
+      PORT: 8080
+    depends_on:
+      - mysql
+    networks:
+      - goworkforce-network
+
+networks:
+  goworkforce-network:
+    driver: bridge
+
+volumes:
+  mysql_data:
