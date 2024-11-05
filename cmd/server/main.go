@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/dqtu39/GoWorkforce/internal/delivery/http"
+	"github.com/dqtu39/GoWorkforce/internal/middleware"
 	"github.com/dqtu39/GoWorkforce/internal/repository"
 	"github.com/dqtu39/GoWorkforce/internal/usecase"
 	"github.com/dqtu39/GoWorkforce/pkg/db"
@@ -18,16 +19,27 @@ func main() {
 	defer dbConn.Close()
 
 	employeeRepo := repository.NewEmployeeRepository(dbConn)
-	employeeUsecase := usecase.NewEmployeeUseCase(employeeRepo)
-	employeeHandler := http.NewEmployeeHandler(employeeUsecase)
+	employeeUseCase := usecase.NewEmployeeUseCase(employeeRepo)
+	employeeHandler := http.NewEmployeeHandler(employeeUseCase)
+
+	userRepo := repository.NewUserRepository(dbConn)
+	userUseCase := usecase.NewUserUseCase(userRepo)
+	userHandler := http.NewUserHandler(userUseCase)
 
 	r := gin.Default()
 
-	r.GET("/employees", employeeHandler.ListEmployee)
-	r.GET("/employees/:id", employeeHandler.GetEmployee)
-	r.POST("/employees", employeeHandler.CreateEmployee)
-	r.PUT("/employees/:id", employeeHandler.UpdateEmployee)
-	r.DELETE("/employees/:id", employeeHandler.DeleteEmployee)
+	r.POST("/register", userHandler.Register)
+	r.POST("/login", userHandler.Login)
+
+	employeeRoutes := r.Group("/employees")
+	employeeRoutes.Use(middleware.JWTAuthMiddleware())
+	{
+		employeeRoutes.POST("", employeeHandler.CreateEmployee)
+		employeeRoutes.GET("", employeeHandler.ListEmployee)
+		employeeRoutes.GET("/:id", employeeHandler.GetEmployee)
+		employeeRoutes.PUT("/:id", employeeHandler.UpdateEmployee)
+		employeeRoutes.DELETE("/:id", employeeHandler.DeleteEmployee)
+	}
 
 	// Get port from environment or default to 8080
 	port := os.Getenv("PORT")
