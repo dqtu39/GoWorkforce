@@ -11,6 +11,31 @@ import (
 	"os"
 )
 
+func setupRoutes(r *gin.Engine, employeeHandler *http.EmployeeHandler, userHandler *http.UserHandler) {
+	// Health check endpoint
+	r.GET("/health", func(c *gin.Context) {
+		c.JSON(200, gin.H{"status": "healthy"})
+	})
+
+	// Auth routes
+	r.POST("/register", userHandler.Register)
+	r.POST("/login", userHandler.Login)
+
+	// Protected routes
+	api := r.Group("/api")
+	api.Use(middleware.JWTAuthMiddleware())
+	{
+		employees := api.Group("/employees")
+		{
+			employees.POST("", employeeHandler.CreateEmployee)
+			employees.GET("", employeeHandler.ListEmployee)
+			employees.GET("/:id", employeeHandler.GetEmployee)
+			employees.PUT("/:id", employeeHandler.UpdateEmployee)
+			employees.DELETE("/:id", employeeHandler.DeleteEmployee)
+		}
+	}
+}
+
 func main() {
 	dbConn, err := db.NewMySQLConn()
 	if err != nil {
@@ -28,18 +53,7 @@ func main() {
 
 	r := gin.Default()
 
-	r.POST("/register", userHandler.Register)
-	r.POST("/login", userHandler.Login)
-
-	employeeRoutes := r.Group("/employees")
-	employeeRoutes.Use(middleware.JWTAuthMiddleware())
-	{
-		employeeRoutes.POST("", employeeHandler.CreateEmployee)
-		employeeRoutes.GET("", employeeHandler.ListEmployee)
-		employeeRoutes.GET("/:id", employeeHandler.GetEmployee)
-		employeeRoutes.PUT("/:id", employeeHandler.UpdateEmployee)
-		employeeRoutes.DELETE("/:id", employeeHandler.DeleteEmployee)
-	}
+	setupRoutes(r, employeeHandler, userHandler)
 
 	// Get port from environment or default to 8080
 	port := os.Getenv("PORT")
@@ -52,3 +66,4 @@ func main() {
 		log.Fatalf("Failed to start server: %v", err)
 	}
 }
+
